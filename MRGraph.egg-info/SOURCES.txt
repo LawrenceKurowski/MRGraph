@@ -1,0 +1,7 @@
+README.md
+setup.py
+MRGraph.egg-info/PKG-INFO
+MRGraph.egg-info/SOURCES.txt
+MRGraph.egg-info/dependency_links.txt
+MRGraph.egg-info/not-zip-safe
+MRGraph.egg-info/top_level.txt

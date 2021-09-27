@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
-from MRGraph.models import GCN,ResGCN
+from MRGraph.models import GCN,ResGCN,DenseGCN,MomGCN
 from MRGraph.utils import *
 from MRGraph.dataset import Dataset
 import argparse
@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=15, help='Random seed.')
 parser.add_argument('--dataset', type=str, default='cora', choices=['cora', 'cora_ml', 'citeseer', 'polblogs', 'pubmed'], help='dataset')
 parser.add_argument('--ptb_rate', type=float, default=0.05,  help='pertubation rate')
-parser.add_argument('--model', type=str, default='GCN',  choices=['GCN','ResGCN','MomGCN'],help='pertubation rate')
+parser.add_argument('--model', type=str, default='GCN',  choices=['GCN','ResGCN','DenseGCN','MomGCN'],help='model')
 
 
 args = parser.parse_args()
@@ -47,9 +47,11 @@ for seed in seeds:
         nfeat = features.shape[1]
         nhid = 16
         nclass = labels.shape[0]
-        model = ResGCN(nfeat, nhid, nclass, dropout=0.5, lr=0.01, weight_decay=5e-4,with_relu=True, with_bias=True, device=None)
+        model = ResGCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, dropout=0.5, lr=0.001, weight_decay=5e-4,with_relu=True, with_bias=True, device=None)
+    elif args.model=='DenseGCN':
+        model = DenseGCN(nblocks=2,nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, device=device,lr=0.001)
     elif args.model=='MomGCN':
-        model = GCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, device=device)
+        model = MomGCN(nblocks=2,nnodes = features.shape[0], nfeat=features.shape[1], nhid=32, nclass=labels.max()+1, device=device,lr=0.001)
     else:
         model = GCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, device=device)
     

@@ -8,7 +8,7 @@ from torch.nn.modules.module import Module
 import MRGraph.utils as utils
 from copy import deepcopy
 from sklearn.metrics import f1_score
-from MRGraph.layers import ResGraphConv, GraphConv
+from MRGraph.layers import ResGraphConv, GraphConv,DenseGraphConv,MomGraphConv
 
 
 
@@ -54,7 +54,7 @@ class GCN(nn.Module):
         self.gc1.reset_parameters()
         self.gc2.reset_parameters()
 
-    def fit(self, features, adj, labels, idx_train, idx_val=None, train_iters=200, initialize=True, verbose=False, normalize=True, patience=500, **kwargs):
+    def fit(self, features, adj, labels, idx_train, idx_val=None, train_iters=200, initialize=True, verbose=True, normalize=True, patience=500, **kwargs):
 
         self.device = self.gc1.weight.device
         if initialize:
@@ -239,21 +239,47 @@ class ResGCN(GCN):
 
     
 class DenseGCN(GCN):
-    def __init__(self, nfeat, nhid, nclass, ninnerlayer,dropout=0.5, lr=0.01, weight_decay=5e-4,
+    def __init__(self, nblocks,nfeat, nhid, nclass,dropout=0.5, lr=0.01, weight_decay=5e-4,
             with_relu=True, with_bias=True, device=None):
 
-        super(ResGCN, self).__init__(nfeat,nhid,nclass,ninnerlayer)
-        self.gc1 = GraphConv(nfeat, nfeat, with_bias=with_bias)
-        self.gc2 = GraphConv(nhid, nhid, with_bias=with_bias)
+        super(DenseGCN, self).__init__(nblocks,nfeat,nhid,nclass)
         
-        
-    
-        self.linears = nn.ModuleList([nn.Linear(10, 10) for i in range(ninnerlayer)])
-        
-        
+        self.gc1 = DenseGraphConv(nblocks,nfeat, nfeat, with_bias=with_bias)
+        self.gc2 = DenseGraphConv(nblocks,nhid, nhid, with_bias=with_bias)
         
         self.fc1 = torch.nn.Linear(nfeat, nhid)
         self.fc2 = torch.nn.Linear(nhid, nclass)
+        
+        self.dropout = dropout
+        self.lr = lr
+        if not with_relu:
+            self.weight_decay = 0
+        else:
+            self.weight_decay = weight_decay
+        self.with_relu = with_relu
+        self.with_bias = with_bias
+
+    def forward(self, x, adj):
+        x = F.relu(self.gc1(x, adj)+x)
+        x = self.fc1(x)
+        x = F.dropout(x, self.dropout, training=self.training)
+        x = F.relu(self.gc2(x, adj)+x)
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
+    
+    
+class MomGCN(GCN):
+    def __init__(self, nblocks,nnodes,nfeat, nhid, nclass,dropout=0.5, lr=0.01, weight_decay=5e-4,
+            with_relu=True, with_bias=True, device=None):
+
+        super(MomGCN, self).__init__(nblocks,nnodes,nfeat,nhid,nclass)
+        
+        self.gc1 = MomGraphConv(nblocks,nnodes,nfeat, nfeat, with_bias=with_bias)
+        self.gc2 = MomGraphConv(nblocks,nnodes,nhid, nhid, with_bias=with_bias)
+        
+        self.fc1 = torch.nn.Linear(nfeat, nhid)
+        self.fc2 = torch.nn.Linear(nhid, nclass)
+        
         self.dropout = dropout
         self.lr = lr
         if not with_relu:
