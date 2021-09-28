@@ -43,11 +43,15 @@ for seed in seeds:
     adj, features, labels = data.adj, data.features, data.labels
     idx_train, idx_val, idx_test = data.idx_train, data.idx_val, data.idx_test
     
+#     adj = adj.to(device)
+#     features = features.to(device)
+#     labels = labels.to(device)
+    
     if args.model=='ResGCN':
         nfeat = features.shape[1]
         nhid = 16
         nclass = labels.shape[0]
-        model = ResGCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, dropout=0.5, lr=0.001, weight_decay=5e-4,with_relu=True, with_bias=True, device=None)
+        model = ResGCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, dropout=0.5, lr=0.001, weight_decay=5e-4,with_relu=True, with_bias=True, device=device)
     elif args.model=='DenseGCN':
         model = DenseGCN(nblocks=2,nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, device=device,lr=0.001)
     elif args.model=='MomGCN':
@@ -58,6 +62,7 @@ for seed in seeds:
     model = model.to(device)
 
     model.fit(features, adj, labels, idx_train, train_iters=200, verbose=False)
+#     model.fit(features.to(device), adj.to(device), labels.to(device), idx_train, train_iters=200, verbose=False)
     model.eval()
     acc = model.test(idx_test)
     accuracies.append(acc)

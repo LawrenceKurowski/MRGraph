@@ -55,8 +55,8 @@ class GCN(nn.Module):
         self.gc2.reset_parameters()
 
     def fit(self, features, adj, labels, idx_train, idx_val=None, train_iters=200, initialize=True, verbose=True, normalize=True, patience=500, **kwargs):
-
-        self.device = self.gc1.weight.device
+        
+#         self.device = self.gc1.weight.device
         if initialize:
             self.initialize()
 
@@ -260,6 +260,7 @@ class DenseGCN(GCN):
         self.with_bias = with_bias
 
     def forward(self, x, adj):
+        
         x = F.relu(self.gc1(x, adj)+x)
         x = self.fc1(x)
         x = F.dropout(x, self.dropout, training=self.training)
@@ -290,6 +291,8 @@ class MomGCN(GCN):
         self.with_bias = with_bias
 
     def forward(self, x, adj):
+#         x = x.to(self.device)
+#         adj = adj.to(self.device)
         x = F.relu(self.gc1(x, adj)+x)
         x = self.fc1(x)
         x = F.dropout(x, self.dropout, training=self.training)
