@@ -15,7 +15,7 @@ from MRGraph.layers import ResGraphConv, GraphConv,DenseGraphConv,MomGraphConv
 
 class GCN(nn.Module):
 
-    def __init__(self, nfeat, nhid, nclass, dropout=0.5, lr=0.01, weight_decay=5e-4,
+    def __init__(self, nfeat, nhid, nclass, clip,dropout=0.5, lr=0.01, weight_decay=5e-4,
             with_relu=True, with_bias=True, device=None):
 
         super(GCN, self).__init__()
@@ -39,6 +39,8 @@ class GCN(nn.Module):
         self.best_output = None
         self.adj_norm = None
         self.features = None
+        
+        self.clip = clip
 
     def forward(self, x, adj):
         if self.with_relu:
@@ -55,8 +57,10 @@ class GCN(nn.Module):
         self.gc2.reset_parameters()
 
     def fit(self, features, adj, labels, idx_train, idx_val=None, train_iters=200, initialize=True, verbose=True, normalize=True, patience=500, **kwargs):
-        
+#         sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
+#         dataloader = dgl.dataloading.NodeDataLoader(g, train_nids, sampler,batch_size=1024,shuffle=True,drop_last=False,num_workers=4)
 #         self.device = self.gc1.weight.device
+
         if initialize:
             self.initialize()
 
@@ -94,7 +98,11 @@ class GCN(nn.Module):
             optimizer.zero_grad()
             output = self.forward(self.features, self.adj_norm)
             loss_train = F.nll_loss(output[idx_train], labels[idx_train])
+            
             loss_train.backward()
+            
+            torch.nn.utils.clip_grad_norm_(self.parameters(), self.clip)
+
             optimizer.step()
             if verbose and i % 10 == 0:
                 print('Epoch {}, training loss: {}'.format(i, loss_train.item()))
@@ -108,6 +116,8 @@ class GCN(nn.Module):
             print('=== training gcn model ===')
         optimizer = optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
+#         scheduler = optim.ExponentialLR(optimizer, gamma=0.9)
+        
         best_loss_val = 100
         best_acc_val = 0
 
@@ -117,8 +127,13 @@ class GCN(nn.Module):
             output = self.forward(self.features, self.adj_norm)
             loss_train = F.nll_loss(output[idx_train], labels[idx_train])
             loss_train.backward()
-            optimizer.step()
+            
+            loss.backward()
 
+            torch.nn.utils.clip_grad_norm_(self.parameters(), self.clip)
+
+            optimizer.step()
+#             scheduler.step()
             if verbose and i % 10 == 0:
                 print('Epoch {}, training loss: {}'.format(i, loss_train.item()))
 
@@ -154,7 +169,11 @@ class GCN(nn.Module):
             optimizer.zero_grad()
             output = self.forward(self.features, self.adj_norm)
             loss_train = F.nll_loss(output[idx_train], labels[idx_train])
+            
             loss_train.backward()
+            
+            torch.nn.utils.clip_grad_norm_(self.parameters(), self.clip)
+            
             optimizer.step()
 
             if verbose and i % 10 == 0:
@@ -209,7 +228,7 @@ class GCN(nn.Module):
 
 
 class ResGCN(GCN):
-    def __init__(self, nfeat, nhid, nclass, dropout=0.5, lr=0.01, weight_decay=5e-4,
+    def __init__(self, nfeat, nhid, nclass, clip,dropout=0.5, lr=0.01, weight_decay=5e-4,
             with_relu=True, with_bias=True, device=None):
 
         super(ResGCN, self).__init__(nfeat,nhid,nclass)
@@ -239,7 +258,7 @@ class ResGCN(GCN):
 
     
 class DenseGCN(GCN):
-    def __init__(self, nblocks,nfeat, nhid, nclass,dropout=0.5, lr=0.01, weight_decay=5e-4,
+    def __init__(self, nblocks,nfeat, nhid, nclass,clip,dropout=0.5, lr=0.01, weight_decay=5e-4,
             with_relu=True, with_bias=True, device=None):
 
         super(DenseGCN, self).__init__(nblocks,nfeat,nhid,nclass)
@@ -270,7 +289,7 @@ class DenseGCN(GCN):
     
     
 class MomGCN(GCN):
-    def __init__(self, nblocks,nnodes,nfeat, nhid, nclass,dropout=0.5, lr=0.01, weight_decay=5e-4,
+    def __init__(self, nblocks,nnodes,nfeat, nhid, nclass,clip,dropout=0.5, lr=0.01, weight_decay=5e-4,
             with_relu=True, with_bias=True, device=None):
 
         super(MomGCN, self).__init__(nblocks,nnodes,nfeat,nhid,nclass)

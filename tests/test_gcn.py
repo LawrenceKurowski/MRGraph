@@ -6,19 +6,24 @@ from MRGraph.utils import *
 from MRGraph.dataset import Dataset
 import argparse
 
+import dgl
+import dgl.nn as dglnn
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=15, help='Random seed.')
 parser.add_argument('--dataset', type=str, default='cora', choices=['cora', 'cora_ml', 'citeseer', 'polblogs', 'pubmed'], help='dataset')
 parser.add_argument('--ptb_rate', type=float, default=0.05,  help='pertubation rate')
 parser.add_argument('--model', type=str, default='GCN',  choices=['GCN','ResGCN','DenseGCN','MomGCN'],help='model')
-
+parser.add_argument('--clip', type=float, default=0.5, help='Gradient clip')
 
 args = parser.parse_args()
 args.cuda = torch.cuda.is_available()
 print('cuda: %s' % args.cuda)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
+clip = args.clip
 # import wandb
 
 # wandb.init(project="MRGraph", config={
@@ -51,17 +56,19 @@ for seed in seeds:
         nfeat = features.shape[1]
         nhid = 16
         nclass = labels.shape[0]
-        model = ResGCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, dropout=0.5, lr=0.001, weight_decay=5e-4,with_relu=True, with_bias=True, device=device)
+        model = ResGCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1,clip=clip, dropout=0.5, lr=0.001, weight_decay=5e-4,with_relu=True, with_bias=True, device=device)
     elif args.model=='DenseGCN':
-        model = DenseGCN(nblocks=2,nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, device=device,lr=0.001)
+        model = DenseGCN(nblocks=2,nfeat=features.shape[1], nhid=16, nclass=labels.max()+1,clip=clip, device=device,lr=0.001)
     elif args.model=='MomGCN':
-        model = MomGCN(nblocks=2,nnodes = features.shape[0], nfeat=features.shape[1], nhid=32, nclass=labels.max()+1, device=device,lr=0.001)
+        model = MomGCN(nblocks=2,nnodes = features.shape[0], nfeat=features.shape[1], nhid=32, nclass=labels.max()+1,clip=clip, device=device,lr=0.001)
     else:
-        model = GCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1, device=device)
+        model = GCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1,clip=clip, device=device)
     
     model = model.to(device)
 
-    model.fit(features, adj, labels, idx_train, train_iters=200, verbose=False)
+    
+    
+    model.fit(features, adj, labels, idx_train, train_iters=275, verbose=False)
 #     model.fit(features.to(device), adj.to(device), labels.to(device), idx_train, train_iters=200, verbose=False)
     model.eval()
     acc = model.test(idx_test)
