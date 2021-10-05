@@ -141,19 +141,21 @@ class DenseGraphConv(Module):
     
     
 class MomGraphConv(Module):
-    def __init__(self, nblocks,nnodes,in_features, out_features, with_bias=True):
+    def __init__(self, nblocks,nnodes,in_features, out_features, device, with_bias=True):
         super(MomGraphConv, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.nblocks=nblocks
-        
+        self.device=device
         self.velocity = torch.ones(nnodes,in_features)
+#         self.velocity = velocity.to(self.device)
 #         self.velocity = sparse_mx_to_torch_sparse_tensor(velocity)
         self.gamma = .1#gamma
         
         blocks =[]
         for i in range(nblocks):
             weight = Parameter(torch.FloatTensor(in_features, out_features))
+#             weight = weight.to(self.device)
             blocks.append(weight)
         
         self.weight = blocks[0]
@@ -172,7 +174,10 @@ class MomGraphConv(Module):
             self.bias.data.uniform_(-stdv, stdv)
 
     def forward(self, input, adj):
-        velocity = self.velocity
+#         print('device = ',self.device)
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        velocity = self.velocity.to(device)
+#         print('before loop, velocity on cuda? ',velocity.is_cuda)
         if input.data.is_sparse:
             
             for i in range(self.nblocks):
@@ -180,10 +185,25 @@ class MomGraphConv(Module):
                 x = velocity+input
         else:
             for i in range(self.nblocks):
-                velocity = self.gamma * velocity + (1 - self.gamma) * torch.spmm(input, self.blocks[i])
+                velocity = self.gamma * velocity
+#                 print('velocity type: ', type(velocity))
+#                 print('velocity shape: ', velocity.shape)
+#                 print('is velocity cuda? ',velocity.is_cuda)
+#                 print('velo')
+                test = (1 - self.gamma) * torch.spmm(input, self.blocks[i])
+#                 exit()
+#                 print('test type: ',type(test))
+#                 print('test shape: ',test.shape)
+#                 print('is test cuda? ',test.is_cuda)
+#                 print()
+#                 velocity = velocity + (1 - self.gamma) * torch.spmm(input, self.blocks[i])
+#                 exit()
+                velocity= velocity + test
+#                 exit()
                 x = velocity+input
+#                 exit()
         x = torch.spmm(adj,x)
-        
+        exit()
         if self.bias is not None:
             return x + self.bias
         else:

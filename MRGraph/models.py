@@ -43,6 +43,7 @@ class GCN(nn.Module):
         self.clip = clip
 
     def forward(self, x, adj):
+        
         if self.with_relu:
             x = F.relu(self.gc1(x, adj))
         else:
@@ -60,7 +61,8 @@ class GCN(nn.Module):
 #         sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
 #         dataloader = dgl.dataloading.NodeDataLoader(g, train_nids, sampler,batch_size=1024,shuffle=True,drop_last=False,num_workers=4)
 #         self.device = self.gc1.weight.device
-
+        self.to(self.device)
+    
         if initialize:
             self.initialize()
 
@@ -79,7 +81,8 @@ class GCN(nn.Module):
         else:
             adj_norm = adj
 
-        self.adj_norm = adj_norm
+        adj_norm = adj_norm
+        self.adj_norm = adj_norm.to(self.device) 
         self.features = features
         self.labels = labels
 
@@ -100,6 +103,8 @@ class GCN(nn.Module):
             loss_train = F.nll_loss(output[idx_train], labels[idx_train])
             
             loss_train.backward()
+            
+            
             
             torch.nn.utils.clip_grad_norm_(self.parameters(), self.clip)
 
@@ -289,13 +294,12 @@ class DenseGCN(GCN):
     
     
 class MomGCN(GCN):
-    def __init__(self, nblocks,nnodes,nfeat, nhid, nclass,clip,dropout=0.5, lr=0.01, weight_decay=5e-4,
-            with_relu=True, with_bias=True, device=None):
+    def __init__(self, nblocks,nnodes,nfeat, nhid, nclass,clip,device,dropout=0.5, lr=0.01, weight_decay=5e-4,
+            with_relu=True, with_bias=True):
 
         super(MomGCN, self).__init__(nblocks,nnodes,nfeat,nhid,nclass)
-        
-        self.gc1 = MomGraphConv(nblocks,nnodes,nfeat, nfeat, with_bias=with_bias)
-        self.gc2 = MomGraphConv(nblocks,nnodes,nhid, nhid, with_bias=with_bias)
+        self.gc1 = MomGraphConv(nblocks,nnodes,nfeat, nfeat, device,with_bias=with_bias)
+        self.gc2 = MomGraphConv(nblocks,nnodes,nhid, nhid, device,with_bias=with_bias)
         
         self.fc1 = torch.nn.Linear(nfeat, nhid)
         self.fc2 = torch.nn.Linear(nhid, nclass)

@@ -6,8 +6,8 @@ from MRGraph.utils import *
 from MRGraph.dataset import Dataset
 import argparse
 
-import dgl
-import dgl.nn as dglnn
+# import dgl
+# import dgl.nn as dglnn
 
 
 parser = argparse.ArgumentParser()
@@ -52,6 +52,7 @@ for seed in seeds:
 #     features = features.to(device)
 #     labels = labels.to(device)
     
+    
     if args.model=='ResGCN':
         nfeat = features.shape[1]
         nhid = 16
@@ -64,6 +65,7 @@ for seed in seeds:
     else:
         model = GCN(nfeat=features.shape[1], nhid=16, nclass=labels.max()+1,clip=clip, device=device)
     
+    adj,features,labels = preprocess(adj, features, labels, preprocess_adj=True, preprocess_feature=True, device=device)
     model = model.to(device)
 
     
